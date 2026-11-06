@@ -3,13 +3,15 @@ package posture
 import (
 	"context"
 	"fmt"
-	"strings"
+	"regexp"
 
 	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
 	nbpeer "github.com/netbirdio/netbird/management/server/peer"
 )
+
+var kernelVersionRe = regexp.MustCompile(`^\d+(\.\d+)*`)
 
 type MinVersionCheck struct {
 	MinVersion string
@@ -39,7 +41,7 @@ func (c *OSVersionCheck) Check(ctx context.Context, peer nbpeer.Peer) (bool, err
 	case "ios":
 		return checkMinVersion(ctx, peerGoOS, peer.Meta.OSVersion, c.Ios)
 	case "linux":
-		kernelVersion := strings.Split(peer.Meta.KernelVersion, "-")[0]
+		kernelVersion := extractNumericVersion(peer.Meta.KernelVersion)
 		return checkMinKernelVersion(ctx, peerGoOS, kernelVersion, c.Linux)
 	case "windows":
 		return checkMinKernelVersion(ctx, peerGoOS, peer.Meta.KernelVersion, c.Windows)
@@ -101,6 +103,12 @@ func checkMinVersion(ctx context.Context, peerGoOS, peerVersion string, check *M
 	}
 
 	return false, nil
+}
+
+// extractNumericVersion returns the leading numeric dotted version from a kernel
+// version string, stripping distro suffixes like "+deb13+1-amd64".
+func extractNumericVersion(raw string) string {
+	return kernelVersionRe.FindString(raw)
 }
 
 func checkMinKernelVersion(ctx context.Context, peerGoOS, peerVersion string, check *MinKernelVersionCheck) (bool, error) {

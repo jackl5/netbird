@@ -122,6 +122,38 @@ func TestOSVersionCheck_Check(t *testing.T) {
 			isValid: false,
 		},
 		{
+			name: "Valid Peer Linux Kernel version with Debian build metadata",
+			input: peer.Peer{
+				Meta: peer.PeerSystemMeta{
+					GoOS:          "linux",
+					KernelVersion: "6.12.74+deb13+1-amd64",
+				},
+			},
+			check: OSVersionCheck{
+				Linux: &MinKernelVersionCheck{
+					MinKernelVersion: "0",
+				},
+			},
+			wantErr: false,
+			isValid: true,
+		},
+		{
+			name: "Valid Peer Linux Kernel version with single Debian suffix",
+			input: peer.Peer{
+				Meta: peer.PeerSystemMeta{
+					GoOS:          "linux",
+					KernelVersion: "6.12.57+deb13-amd64",
+				},
+			},
+			check: OSVersionCheck{
+				Linux: &MinKernelVersionCheck{
+					MinKernelVersion: "6.0.0",
+				},
+			},
+			wantErr: false,
+			isValid: true,
+		},
+		{
 			name: "Invalid Peer Linux kernel version",
 			input: peer.Peer{
 				Meta: peer.PeerSystemMeta{
@@ -148,6 +180,27 @@ func TestOSVersionCheck_Check(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, tt.isValid, isValid)
+		})
+	}
+}
+
+func TestExtractNumericVersion(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"6.12.74+deb13+1-amd64", "6.12.74"},
+		{"6.12.57+deb13-amd64", "6.12.57"},
+		{"6.5.11-linuxkit", "6.5.11"},
+		{"6.1.1", "6.1.1"},
+		{"10.0.20348.2227", "10.0.20348.2227"},
+		{"", ""},
+		{"not-a-version", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			assert.Equal(t, tt.want, extractNumericVersion(tt.input))
 		})
 	}
 }

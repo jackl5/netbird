@@ -1,10 +1,12 @@
 package nmdata
 
 import (
-	"strings"
+	"regexp"
 
 	"github.com/hashicorp/go-version"
 )
+
+var kernelVersionRe = regexp.MustCompile(`^\d+(\.\d+)*`)
 
 // MinVersionCheck is the slim twin of posture.MinVersionCheck.
 type MinVersionCheck struct {
@@ -34,7 +36,7 @@ func (c *OSVersionCheck) check(peer *Peer) (bool, error) {
 	case "ios":
 		return checkMinVersion(peer.Meta.OSVersion, c.Ios)
 	case "linux":
-		kernelVersion := strings.Split(peer.Meta.KernelVersion, "-")[0]
+		kernelVersion := extractNumericVersion(peer.Meta.KernelVersion)
 		return checkMinKernelVersion(kernelVersion, c.Linux)
 	case "windows":
 		return checkMinKernelVersion(peer.Meta.KernelVersion, c.Windows)
@@ -58,6 +60,10 @@ func checkMinVersion(peerVersion string, check *MinVersionCheck) (bool, error) {
 	}
 
 	return constraints.Check(peerNBVersion), nil
+}
+
+func extractNumericVersion(raw string) string {
+	return kernelVersionRe.FindString(raw)
 }
 
 func checkMinKernelVersion(peerVersion string, check *MinKernelVersionCheck) (bool, error) {
